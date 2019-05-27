@@ -1,0 +1,11 @@
+// See https://aka.ms/vscode-remote/devcontainer.json for format details.
+{
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "web",
+	"workspaceFolder": "/opt/project",
+	"extensions": [
+		"ms-python.python",
+		"mutantdino.resourcemonitor",
+		"peterjausovec.vscode-docker"
+	]
+}
