@@ -36,6 +36,9 @@ class CustomersListView(ListAPIView):
         return context
 
     def render_csv_generator(self, data):
+        """
+        Generator for StreamingHttpResponse
+        """
         csv_buffer = Echo()
         csv_writer = csv.writer(csv_buffer)
         yield csv_writer.writerow(
@@ -45,7 +48,10 @@ class CustomersListView(ListAPIView):
             yield csv_writer.writerow(row)
 
     def list(self, request, *args, **kwargs):
+        """
+        Customers list in CSV
 
+        """
         qs = self.queryset.values_list('id', 'first_name', 'last_name', 'phones__number', 'emails__address')
 
         resp = StreamingHttpResponse(self.render_csv_generator(list(qs)), content_type='text/csv')
