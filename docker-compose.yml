@@ -14,7 +14,7 @@ services:
       - POSTGRES_PASSWORD
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn -b 0.0.0.0:8000 --workers=4 project.wsgi
     volumes:
       - .:/opt/project
     ports:

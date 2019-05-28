@@ -21,15 +21,13 @@ class CustomersViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().prefetch_related('phones', 'emails')
     filename = 'customers.csv'
 
-    def render_csv_generator(self, queryset, pagesize=2000000):
+    def render_csv_generator(self, queryset, header, pagesize=1000000):
         """
         Generator for StreamingHttpResponse
         """
         csv_buffer = Echo()
         csv_writer = csv.writer(csv_buffer)
-        yield csv_writer.writerow(
-            ['customer.id', 'customer.first_name', 'customer.last_name', 'phone.number', 'email.address']
-        )
+        yield csv_writer.writerow(header)
         offset = 0
         data = list(queryset[offset: offset + pagesize])
 
@@ -46,7 +44,13 @@ class CustomersViewSet(viewsets.ModelViewSet):
         """
         qs = self.queryset.values_list('id', 'first_name', 'last_name', 'phones__number', 'emails__address')
 
-        resp = StreamingHttpResponse(self.render_csv_generator(qs), content_type='text/csv')
+        resp = StreamingHttpResponse(
+            self.render_csv_generator(
+                qs,
+                header=['customer.id', 'customer.first_name', 'customer.last_name', 'phone.number', 'email.address']
+            ),
+            content_type='text/csv'
+        )
 
         resp['Content-Disposition'] = f'attachment; filename="{self.filename}"'
         return resp
