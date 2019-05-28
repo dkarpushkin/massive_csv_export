@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import CustomersListView
+from .views import CustomersViewSet
 
 urlpatterns = [
-    path('csv/', CustomersListView.as_view()),
+    path('csv/', CustomersViewSet.as_view(actions={'get': 'csv_list'})),
 ]

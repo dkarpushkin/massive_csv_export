@@ -1,5 +1,6 @@
 import csv
 
+from rest_framework import viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 from django.http import StreamingHttpResponse
@@ -15,27 +16,12 @@ class Echo(object):
         return value
 
 
-class CustomersListView(ListAPIView):
+class CustomersViewSet(viewsets.ModelViewSet):
     
     queryset = Customer.objects.all().prefetch_related('phones', 'emails')
     filename = 'customers.csv'
 
-    def get_renderer_context(self):
-
-        context = super().get_renderer_context()
-        context.update({
-            'header': ['id', 'first_name', 'last_name', 'phones__number', 'emails__address'],
-            'labels': {
-                'id': 'customer.id',
-                'first_name': 'customer.first_name',
-                'last_name': 'customer.last_name',
-                'emails__address': 'phone.number',
-                'phones__number': 'email.address',
-            }
-        })
-        return context
-
-    def render_csv_generator(self, data):
+    def render_csv_generator(self, queryset, pagesize=2000000):
         """
         Generator for StreamingHttpResponse
         """
@@ -44,17 +30,23 @@ class CustomersListView(ListAPIView):
         yield csv_writer.writerow(
             ['customer.id', 'customer.first_name', 'customer.last_name', 'phone.number', 'email.address']
         )
-        for row in data:
-            yield csv_writer.writerow(row)
+        offset = 0
+        data = list(queryset[offset: offset + pagesize])
 
-    def list(self, request, *args, **kwargs):
+        while data:
+            for row in data:
+                yield csv_writer.writerow(row)
+            offset += pagesize
+            data = list(queryset[offset: offset + pagesize])
+
+    def csv_list(self, request, *args, **kwargs):
         """
         Customers list in CSV
 
         """
         qs = self.queryset.values_list('id', 'first_name', 'last_name', 'phones__number', 'emails__address')
 
-        resp = StreamingHttpResponse(self.render_csv_generator(list(qs)), content_type='text/csv')
+        resp = StreamingHttpResponse(self.render_csv_generator(qs), content_type='text/csv')
 
         resp['Content-Disposition'] = f'attachment; filename="{self.filename}"'
         return resp
