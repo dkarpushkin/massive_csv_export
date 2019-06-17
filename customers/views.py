@@ -28,6 +28,7 @@ class CustomersViewSet(viewsets.ModelViewSet):
         csv_buffer = Echo()
         csv_writer = csv.writer(csv_buffer)
         yield csv_writer.writerow(header)
+
         offset = 0
         data = list(queryset[offset: offset + pagesize])
 
