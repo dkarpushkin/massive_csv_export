@@ -1,0 +1,79 @@
+stages:
+  - test
+  - build
+  - clean
+  - deploy
+
+# Выполнение тестов и линтера
+.test: &test
+  stage: test
+  image: lastdanmer/docker-compose
+  services:
+    - docker:dind
+  script:
+    # Установка зависимостей
+    - echo $DOCKER_AUTH_CONFIG | docker login -u _json_key --password-stdin https://eu.gcr.io
+    - apk add make python3
+    - make prepare_envs environment=$ENVIRONMENT
+    - docker-compose up -d --build
+
+    # Ждём немного, а то не всегда контейнер успевает запуститься
+    - sleep 15
+
+    # Прогон тестов
+    - find -type f -name '*.pyc' -delete && docker-compose exec -T web py.test apps/ -s
+
+# Сборка docker-образов и отправка в registry
+.build: &build
+  stage: build
+  image: lastdanmer/docker-compose
+  script:
+    - echo $DOCKER_AUTH_CONFIG | docker login -u _json_key --password-stdin https://eu.gcr.io
+    - make prepare_envs environment=$ENVIRONMENT
+    - docker-compose build
+    - docker-compose push
+
+build-master:
+  only:
+    - master
+  variables:
+    ENVIRONMENT: production
+  <<: *build
+
+# Очистка
+.clean: &clean
+  stage: clean
+  image: lastdanmer/docker-compose
+  services:
+    - docker:dind
+  only:
+    - dev
+    - master
+  script:
+    - apk add make
+    - make prepare_envs environment=$ENVIRONMENT
+    - docker-compose down -v
+  when: always
+
+clean-master:
+  only:
+    - master
+  variables:
+    ENVIRONMENT: production
+  <<: *clean
+
+# Заливка изменений на сервера
+deploy-dev:
+  stage: deploy
+  image: lastdanmer/ssh-client
+  only:
+    - dev
+  script:
+    - ssh -p 22022 ubuntu@green.jetstyle.ru '
+      cd /home/ubuntu/backend/ &&
+      git checkout dev &&
+      git pull origin dev &&
+      make prepare_envs environment=development &&
+      docker-compose pull &&
+      docker-compose up -d
+      '
